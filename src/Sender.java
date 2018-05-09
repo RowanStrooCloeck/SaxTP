@@ -1,17 +1,16 @@
-import java.io.BufferedReader;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.net.*;
 import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
-import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 
 public class Sender extends Thread {
 
     private InetAddress ipAddress;
     private DatagramSocket socket;
     private String filename;
+    private Map<Integer, byte[]> messages = new HashMap<>();
 
     /**
      * Empty constructor
@@ -77,13 +76,26 @@ public class Sender extends Thread {
             // get the data, without headers
             byte[] responseData = new byte[response.length - 14];
             System.arraycopy(response, 14, responseData, 0, response.length - 14);
-            // if the length is smaller than 500, full package is received
-            // else, get the remaining packages
             // send ack
             socket.send(sendAck);
-            if (responseData.length > 500) {
+            // save sequence with data
+            byte[] sequence = new byte[4];
+            System.arraycopy(response, 10, sequence, 0, 4);
+            Integer sequenceID = convertByteToInt(sequence);
+            messages.put(sequenceID, responseData);
+            // if the length is smaller than 500, full package is received
+            // else, get the remaining packages
+            if (responseData.length < 500) {
+                int startPos = 0;
+                int messageSize = messages.size();
+                byte[] fullPackage = new byte[500 * messageSize];
+                for (int i = 0; i < messageSize; i++) {
+                    byte[] savedMessage = messages.get(i);
+                    System.arraycopy(savedMessage, 0, fullPackage, startPos, savedMessage.length);
+                    startPos += savedMessage.length;
+                }
                 FileOutputStream out = new FileOutputStream(filename);
-                out.write(responseData, 0, responseData.length);
+                out.write(fullPackage, 0, fullPackage.length);
                 out.close();
             } else {
                 receiveData();
@@ -94,5 +106,18 @@ public class Sender extends Thread {
 
         System.out.println("FROM SERVER: " + new String(response));
         socket.close();
+    }
+
+    /**
+     * source: https://stackoverflow.com/questions/4950598/convert-byte-to-int
+     *
+     * @param b the byte[] to convert to Integer
+     * @return return the byte[] as Integer
+     */
+    public Integer convertByteToInt(byte[] b) {
+        int value = 0;
+        for (int i = 0; i < b.length; i++)
+            value = (value << 8) | b[i];
+        return value;
     }
 }
