@@ -1,5 +1,6 @@
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
+import java.util.Arrays;
 
 public class RequestMessage {
     private final byte[] header = "SaxTP".getBytes();
