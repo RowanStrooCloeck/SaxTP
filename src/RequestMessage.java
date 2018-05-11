@@ -37,4 +37,8 @@ public class RequestMessage {
     private String getFilename() {
         return new String(filename);
     }
+
+    public byte[] getTransferID() {
+        return transferID;
+    }
 }
